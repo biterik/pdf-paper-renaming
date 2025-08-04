@@ -1,4 +1,4 @@
-# Renaming of pdfs of scientific papers made easy
+# Batch renaming of pdfs of scientific papers made easy
 ## Features
 
 * Select multiple PDF files through a graphical user interface.
