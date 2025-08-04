@@ -1,7 +1,6 @@
 name: pdf-renamer-env
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - python=3.11   # Or your preferred Python version
   - pip
