@@ -9,4 +9,5 @@
 
 ## Download
 
-You can download the latest version of the application for macOS from the [**GitHub Releases page**]([https://github.com/your-username/your-repo-name/releases](https://github.com/biterik/pdf-paper-renaming/releases/).
+You can download the latest version of the application for macOS from the
+ [**GitHub Releases page**](https://github.com/biterik/pdf-paper-renaming/releases/).
