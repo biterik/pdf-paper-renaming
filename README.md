@@ -27,5 +27,5 @@ You can also directly install the binaries provided in the section on the downlo
 
 ## Download
 
-You can download the latest version of the application for macOS from the
+You can download the latest version of the application for Windows and macOS from the
  [**GitHub Releases page**](https://github.com/biterik/pdf-paper-renaming/releases/).
