@@ -2,8 +2,9 @@ name: pdf-renamer-env
 channels:
   - conda-forge
 dependencies:
-  - python=3.11   # Or your preferred Python version
-  - pip
-  - pymupdf
+  - python=3.11
   - requests
   - pyinstaller
+  - pip  # <-- 1. Add pip as a conda dependency
+  - pip: # <-- 2. Create a nested pip section
+    - pymupdf # <-- 3. List pip-only packages here
