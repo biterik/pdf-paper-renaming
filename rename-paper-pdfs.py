@@ -18,7 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # -----------------------------------------------------------------------------
-
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox, simpledialog
 import os
