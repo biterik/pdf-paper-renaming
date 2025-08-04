@@ -1,0 +1,3 @@
+([('PaperPDFRenamer',
+   '/Users/oq50iqeq/Desktop/LITERATURE/PDF-TREATMENT/dist/PaperPDFRenamer',
+   'EXECUTABLE')],)
