@@ -1,0 +1,14 @@
+# PyInstaller files
+/dist/
+/build/
+*.spec
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Conda environment files (if stored locally)
+/pdf-renamer-env/
+
+# macOS specific
+.DS_Store
