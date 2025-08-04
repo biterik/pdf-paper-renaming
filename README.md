@@ -7,6 +7,24 @@
 * Allows to manually provide file names when the lookup failed.
 * Renames the files in their original directory with a single click.
 
+## Installation
+You can also directly install the binaries provided in the section on the downloads.
+
+1.  Clone this repository.
+2.  Ensure you have Miniconda or Anaconda installed.
+3.  Open your terminal or Anaconda Prompt, navigate to the project directory, and run the following command to create the environment:
+
+    ```bash
+    conda env create -f environment.yml
+    ```
+
+4.  Activate the new environment:
+
+    ```bash
+    conda activate pdf-renamer-env
+    ```
+
+
 ## Download
 
 You can download the latest version of the application for macOS from the
