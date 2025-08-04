@@ -10,5 +10,8 @@ __pycache__/
 # Conda environment files (if stored locally)
 /pdf-renamer-env/
 
+# Editor-specific files
+.vscode/
+
 # macOS specific
 .DS_Store

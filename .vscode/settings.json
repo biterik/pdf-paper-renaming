@@ -1,5 +1,0 @@
-{
-    "python.defaultInterpreterPath": "~/miniconda3/envs/myproject/bin/python",
-    "python.terminal.activateEnvironment": true,
-    "python.formatting.provider": "black"
-}
