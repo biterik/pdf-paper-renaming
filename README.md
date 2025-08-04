@@ -1,5 +1,5 @@
 # Renaming of pdfs of scientific papers made easy
-##Features
+## Features
 
 * Select multiple PDF files through a graphical user interface.
 * Automatically fetches metadata (Year, First Author, Title) from the CrossRef API.
