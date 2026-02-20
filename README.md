@@ -27,5 +27,14 @@ You can also directly install the binaries provided in the section on the downlo
 
 ## Download
 
-You can download the latest version of the application for Windows and macOS from the
- [**GitHub Releases page**](https://github.com/biterik/pdf-paper-renaming/releases/).
+You can download the latest version of the application for Windows, macOS, and Linux from the
+[**GitHub Releases page**](https://github.com/biterik/pdf-paper-renaming/releases/).
+
+### macOS: First Launch
+
+Since the application is not code-signed, macOS will block it on first launch. To open it:
+
+1. Double-click the app. A dialog will say it "can't be opened."
+2. Open **System Settings > Privacy & Security**.
+3. Scroll down to find a message about "PaperPDFRenamer" being blocked.
+4. Click **Open Anyway** and confirm.
