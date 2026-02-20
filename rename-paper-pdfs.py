@@ -25,49 +25,263 @@ import fitz  # PyMuPDF
 import requests
 import re
 import threading
+import difflib
 
-# --- METADATA AND RENAMING LOGIC ---
+# --- CONSTANTS ---
 
-def extract_text_from_pdf(pdf_path):
-    """Extracts text from the first page of a PDF to use for searching."""
-    try:
-        doc = fitz.open(pdf_path)
-        text = doc[0].get_text("text")[:500]
-        doc.close()
-        return text.strip()
-    except Exception as e:
-        print(f"Error reading PDF {pdf_path}: {e}")
+CROSSREF_API = "https://api.crossref.org/works"
+CROSSREF_HEADERS = {'User-Agent': 'PDFRenamer/1.1 (mailto:ebitzek@example.com)'}
+
+DOI_PATTERN = re.compile(r'10\.\d{4,9}/[-._;()/:A-Za-z0-9]+')
+DOI_WITH_PREFIX = re.compile(r'(?:doi[\s.:]{0,2})(10\.\d{4,9}/[-._;()/:A-Za-z0-9]+)', re.IGNORECASE)
+
+BOILERPLATE_PATTERNS = [
+    re.compile(r'https?://\S+'),
+    re.compile(r'www\.\S+'),
+    re.compile(r'\S+@\S+\.\S+'),
+    re.compile(r'Available\s+(online\s+)?at\s+\S+', re.IGNORECASE),
+    re.compile(r'Downloaded\s+from\s+\S+', re.IGNORECASE),
+    re.compile(r'Articles?\s+You\s+May\s+Be\s+Interested\s+In', re.IGNORECASE),
+    re.compile(r'Contents?\s+lists?\s+available\s+at\s+\S+', re.IGNORECASE),
+    re.compile(r'journal\s+homepage:\s*\S+', re.IGNORECASE),
+    re.compile(r'ScienceDirect', re.IGNORECASE),
+    re.compile(r'©\s*\d{4}.*?(?:Elsevier|Springer|Wiley|AIP|ACS|IOP|IEEE|Nature)\b.*', re.IGNORECASE),
+    re.compile(r'All\s+rights?\s+reserved', re.IGNORECASE),
+    re.compile(r'Published\s+by\s+\S+', re.IGNORECASE),
+    re.compile(r'\bView\b\s*\n?\s*\bOnline\b', re.IGNORECASE),
+    re.compile(r'\bExport\b\s*\n?\s*\bCitation\b', re.IGNORECASE),
+]
+
+TITLE_MATCH_THRESHOLD = 0.4
+
+# --- TIER 1: DOI EXTRACTION ---
+
+def extract_doi(text):
+    """Extracts a DOI from text, preferring explicit doi: prefixed ones."""
+    if not text:
         return None
+    match = DOI_WITH_PREFIX.search(text)
+    if match:
+        doi = match.group(1)
+    else:
+        match = DOI_PATTERN.search(text)
+        if match:
+            doi = match.group(0)
+        else:
+            return None
+    return doi.rstrip('.,;)')
+
+def lookup_doi(doi):
+    """Looks up metadata directly via CrossRef /works/{doi} endpoint."""
+    try:
+        url = f"{CROSSREF_API}/{requests.utils.quote(doi, safe='')}"
+        response = requests.get(url, headers=CROSSREF_HEADERS, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if data['status'] == 'ok' and 'message' in data:
+            return _parse_crossref_item(data['message'])
+    except requests.exceptions.RequestException as e:
+        print(f"DOI lookup failed for {doi}: {e}")
+    except (KeyError, IndexError) as e:
+        print(f"Could not parse DOI response for {doi}: {e}")
+    return None
+
+# --- TIER 2: FONT-SIZE TITLE EXTRACTION ---
+
+def extract_title_by_font(page):
+    """Extracts the paper title by finding the largest-font text on the page."""
+    try:
+        d = page.get_text("dict")
+    except Exception:
+        return None
+
+    spans = []
+    for block in d.get("blocks", []):
+        if block.get("type") != 0:
+            continue
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                text = span.get("text", "").strip()
+                if len(text) < 3:
+                    continue
+                # Skip private-use Unicode (icon fonts)
+                if any(ord(c) >= 0xE000 for c in text):
+                    continue
+                spans.append(span)
+
+    if not spans:
+        return None
+
+    max_size = max(s["size"] for s in spans)
+
+    # Collect spans at the largest font size (within 0.5pt tolerance)
+    title_spans = [s for s in spans if abs(s["size"] - max_size) < 0.5]
+
+    # Sort by vertical position then horizontal
+    title_spans.sort(key=lambda s: (s["bbox"][1], s["bbox"][0]))
+
+    title = " ".join(s["text"].strip() for s in title_spans)
+    title = re.sub(r'\s+', ' ', title).strip()
+
+    if len(title) < 10:
+        return None
+
+    return title
+
+# --- TIER 3: CLEANED TEXT EXTRACTION ---
+
+def extract_cleaned_text(page, max_chars=500):
+    """Extracts text from a page with boilerplate and noise removed."""
+    try:
+        text = page.get_text("text")
+    except Exception:
+        return None
+
+    # Remove private-use Unicode
+    text = re.sub(r'[\ue000-\uf8ff]', '', text)
+
+    for pattern in BOILERPLATE_PATTERNS:
+        text = pattern.sub('', text)
+
+    # Collapse whitespace
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = text.strip()
+
+    return text[:max_chars] if text else None
+
+# --- CROSSREF SEARCH AND VALIDATION ---
 
 def search_crossref(text_query):
-    """Searches CrossRef API for metadata based on a text query."""
+    """Searches CrossRef API and returns top results with scores."""
     if not text_query:
-        return None
+        return []
     try:
-        url = "https://api.crossref.org/works"
-        params = {'query.bibliographic': text_query, 'rows': 1}
-        headers = {'User-Agent': 'PDFRenamer/1.0 (mailto:ebitzek@example.com)'}
-        response = requests.get(url, params=params, headers=headers, timeout=10)
+        params = {'query.bibliographic': text_query, 'rows': 3}
+        response = requests.get(CROSSREF_API, params=params,
+                                headers=CROSSREF_HEADERS, timeout=15)
         response.raise_for_status()
         data = response.json()
         if data['status'] == 'ok' and data['message']['items']:
-            item = data['message']['items'][0]
-            title = item.get('title', ['Untitled'])[0]
-            year = "UnknownYear"
-            if 'published' in item and 'date-parts' in item['published']:
-                year = str(item['published']['date-parts'][0][0])
-            elif 'created' in item and 'date-parts' in item['created']:
-                 year = str(item['created']['date-parts'][0][0])
-            first_author = "UnknownAuthor"
-            if 'author' in item and item['author']:
-                if 'family' in item['author'][0]:
-                    first_author = item['author'][0]['family']
-            return {'year': year, 'author': first_author, 'title': title}
+            results = []
+            for item in data['message']['items']:
+                parsed = _parse_crossref_item(item)
+                if parsed:
+                    parsed['score'] = item.get('score', 0)
+                    results.append(parsed)
+            return results
     except requests.exceptions.RequestException as e:
         print(f"API request failed: {e}")
     except (KeyError, IndexError) as e:
         print(f"Could not parse API response: {e}")
-    return None
+    return []
+
+def _parse_crossref_item(item):
+    """Parses a single CrossRef API item into a metadata dict."""
+    title = item.get('title', ['Untitled'])[0]
+    # Strip MathML/XML tags from title
+    title = re.sub(r'<[^>]+>', '', title)
+    title = re.sub(r'\s+', ' ', title).strip()
+
+    year = "UnknownYear"
+    for date_field in ['published-print', 'published-online', 'published', 'issued', 'created']:
+        if date_field in item and 'date-parts' in item[date_field]:
+            parts = item[date_field]['date-parts']
+            if parts and parts[0] and parts[0][0]:
+                year = str(parts[0][0])
+                break
+
+    first_author = "UnknownAuthor"
+    if 'author' in item and item['author']:
+        for author in item['author']:
+            if 'family' in author:
+                first_author = author['family']
+                break
+
+    return {'year': year, 'author': first_author, 'title': title}
+
+def validate_match(pdf_text, crossref_result):
+    """Validates a CrossRef match against the PDF text. Returns a confidence string."""
+    if not crossref_result or not pdf_text:
+        return 'none'
+
+    cr_title = crossref_result.get('title', '').lower()
+    pdf_lower = pdf_text.lower()
+
+    # Check how many significant words from the CrossRef title appear in the PDF
+    title_words = [w for w in re.findall(r'[a-z]{4,}', cr_title)]
+    if not title_words:
+        return 'low'
+
+    found = sum(1 for w in title_words if w in pdf_lower)
+    word_ratio = found / len(title_words)
+
+    # Also check sequence similarity
+    seq_ratio = difflib.SequenceMatcher(None, cr_title[:200], pdf_lower[:500]).ratio()
+
+    if word_ratio >= 0.5 or seq_ratio >= TITLE_MATCH_THRESHOLD:
+        return 'high'
+    elif word_ratio >= 0.25 or seq_ratio >= 0.25:
+        return 'low'
+    else:
+        return 'none'
+
+# --- MAIN IDENTIFICATION PIPELINE ---
+
+def identify_paper(pdf_path):
+    """Runs the three-tier identification pipeline on a PDF.
+    Returns (metadata_dict, confidence_str, method_str) or (None, 'none', None).
+    """
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception as e:
+        print(f"Error opening PDF {pdf_path}: {e}")
+        return None, 'none', None
+
+    num_pages = min(doc.page_count, 2)
+
+    best_result = (None, 'none', None)
+
+    for page_idx in range(num_pages):
+        page = doc[page_idx]
+        full_text = page.get_text("text")
+
+        # Tier 1: DOI
+        doi = extract_doi(full_text)
+        if doi:
+            metadata = lookup_doi(doi)
+            if metadata:
+                doc.close()
+                return metadata, 'high', f'DOI (p{page_idx+1})'
+
+        # Tier 2: Title by font size
+        title = extract_title_by_font(page)
+        if title:
+            results = search_crossref(title)
+            if results:
+                top = results[0]
+                confidence = validate_match(full_text, top)
+                if confidence == 'high':
+                    doc.close()
+                    return top, 'high', f'Title (p{page_idx+1})'
+                if confidence == 'low' and best_result[1] == 'none':
+                    best_result = (top, 'low', f'Title (p{page_idx+1})')
+
+        # Tier 3: Cleaned text
+        cleaned = extract_cleaned_text(page)
+        if cleaned:
+            results = search_crossref(cleaned)
+            if results:
+                top = results[0]
+                confidence = validate_match(full_text, top)
+                if confidence == 'high':
+                    doc.close()
+                    return top, 'high', f'Text (p{page_idx+1})'
+                if confidence == 'low' and best_result[1] == 'none':
+                    best_result = (top, 'low', f'Text (p{page_idx+1})')
+
+    doc.close()
+    return best_result
 
 def sanitize_filename(name):
     """Removes illegal characters from a string so it can be a valid filename."""
@@ -172,12 +386,11 @@ class PDFRenamerApp:
         for path in filepaths:
             original_dir = os.path.dirname(path)
             original_filename = os.path.basename(path)
-            
+
             item_id = self.tree.insert("", "end", values=(original_filename, "", "Processing..."))
             self.root.update_idletasks()
 
-            text = extract_text_from_pdf(path)
-            metadata = search_crossref(text)
+            metadata, confidence, method = identify_paper(path)
 
             file_info = {
                 'id': item_id,
@@ -186,34 +399,47 @@ class PDFRenamerApp:
                 'new_path': None
             }
 
-            if metadata:
+            if metadata and confidence == 'high':
                 new_filename = format_new_filename(metadata)
                 file_info['new_path'] = os.path.join(original_dir, new_filename)
-                status = "Ready to Rename"
+                status = f"Ready [{method}]"
+                self.tree.item(item_id, values=(original_filename, new_filename, status))
+            elif metadata and confidence == 'low':
+                new_filename = format_new_filename(metadata)
+                file_info['new_path'] = os.path.join(original_dir, new_filename)
+                status = f"Low Confidence [{method}]"
                 self.tree.item(item_id, values=(original_filename, new_filename, status))
             else:
                 status = "Error: Not Found"
                 self.tree.item(item_id, values=(original_filename, "Double-click to enter name", status))
-            
+
             self.file_list.append(file_info)
-        
+
         if any(f['new_path'] for f in self.file_list):
             self.rename_button.config(state=tk.NORMAL)
-            self.status_var.set("Review proposed names or double-click failed items to edit. Click 'Apply Renaming' when ready.")
+            self.status_var.set("Review proposed names or double-click items to edit. Click 'Apply Renaming' when ready.")
         else:
             self.status_var.set("Processing complete. No files automatically matched. Double-click items to rename them manually.")
 
     def on_double_click(self, event):
-        """Handles manual renaming when a user double-clicks a failed item."""
+        """Handles manual renaming when a user double-clicks a failed or low-confidence item."""
         item_id = self.tree.identify_row(event.y)
         if not item_id: return
 
         current_values = self.tree.item(item_id, 'values')
-        if current_values and current_values[2] == "Error: Not Found":
+        if not current_values:
+            return
+
+        status = current_values[2]
+        if status == "Error: Not Found" or "Low Confidence" in status:
             original_name = current_values[0]
+            initial_value = ""
+            if "Low Confidence" in status:
+                initial_value = current_values[1].replace('.pdf', '')
             new_name = simpledialog.askstring(
                 "Manual Rename",
                 f"Enter the new filename for:\n{original_name}",
+                initialvalue=initial_value,
                 parent=self.root
             )
 
