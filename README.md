@@ -2,10 +2,40 @@
 ## Features
 
 * Select multiple PDF files through a graphical user interface.
-* Automatically fetches metadata (Year, First Author, Title) from the CrossRef API.
-* Displays a preview of the proposed new filenames before making any changes.
+* Automatically fetches metadata (Year, First Author, Title, Journal) from the CrossRef API.
+* Customizable filename patterns using placeholders: `{Year}`, `{Author}`, `{Title}`, `{Journal}`, `{Tags}`.
+* Built-in journal abbreviation database (~30,000 journals) for short journal names in filenames.
+* User-defined tags (e.g., "glass, fracture") that can be included in filenames.
+* Displays a live preview of the proposed new filenames before making any changes.
 * Allows to manually provide file names when the lookup failed.
 * Renames the files in their original directory with a single click.
+* Settings (selected pattern and tags) are persisted across sessions.
+
+## Filename Patterns
+
+Choose from preset patterns or define your own using the following placeholders:
+
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `{Year}` | Publication year | 2024 |
+| `{Author}` | First author's last name | Zhang |
+| `{Title}` | Paper title | Room-temperature-plasticity-in-amorphous-SiO2 |
+| `{Journal}` | Abbreviated journal name | Acta-Mater. |
+| `{Tags}` | User-defined tags | glass-fracture |
+
+### Preset patterns
+
+* `{Year}-{Author}-{Title}` (default)
+* `{Author}-{Year}-{Title}`
+* `{Year}-{Author}-{Journal}-{Title}`
+* `{Year}-{Author}-{Tags}-{Title}`
+* `{Year}-{Author}-{Journal}-{Tags}-{Title}`
+
+You can also enter a custom pattern via the "Custom..." option in the dropdown.
+
+### Tags
+
+Tags are free-text labels that you type in the Tags field, separated by commas. They are joined with hyphens in the filename. For example, entering `glass, fracture` produces `glass-fracture` in the filename. Tags apply to all files in the current batch and are saved between sessions.
 
 ## Installation
 You can also directly install the binaries provided in the section on the downloads.
