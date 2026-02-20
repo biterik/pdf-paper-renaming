@@ -15,3 +15,8 @@ __pycache__/
 
 # macOS specific
 .DS_Store
+
+# Test/debug scripts and data
+test_pdfs/
+debug_crossref.py
+test_pipeline.py
