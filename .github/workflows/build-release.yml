@@ -40,6 +40,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           pyinstaller --onefile --windowed --name "PaperPDFRenamer" \
+            --add-data "journal_abbreviations.csv:." \
             --hidden-import tkinter \
             --hidden-import tkinter.ttk \
             --hidden-import certifi \
@@ -50,6 +51,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           pyinstaller --onefile --windowed --name "PaperPDFRenamer" `
+            --add-data "journal_abbreviations.csv;." `
             --hidden-import tkinter `
             --hidden-import tkinter.ttk `
             --hidden-import certifi `

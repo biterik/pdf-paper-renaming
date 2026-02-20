@@ -21,6 +21,9 @@
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox, simpledialog
 import os
+import sys
+import csv
+import json
 import fitz  # PyMuPDF
 import requests
 import re
@@ -30,7 +33,17 @@ import difflib
 # --- CONSTANTS ---
 
 CROSSREF_API = "https://api.crossref.org/works"
-CROSSREF_HEADERS = {'User-Agent': 'PDFRenamer/1.1 (mailto:ebitzek@example.com)'}
+CROSSREF_HEADERS = {'User-Agent': 'PDFRenamer/2.0 (mailto:ebitzek@example.com)'}
+
+SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".paper_pdf_renamer.json")
+
+DEFAULT_TEMPLATES = [
+    "{Year}-{Author}-{Title}",
+    "{Author}-{Year}-{Title}",
+    "{Year}-{Author}-{Journal}-{Title}",
+    "{Year}-{Author}-{Tags}-{Title}",
+    "{Year}-{Author}-{Journal}-{Tags}-{Title}",
+]
 
 DOI_PATTERN = re.compile(r'10\.\d{4,9}/[-._;()/:A-Za-z0-9]+')
 DOI_WITH_PREFIX = re.compile(r'(?:doi[\s.:]{0,2})(10\.\d{4,9}/[-._;()/:A-Za-z0-9]+)', re.IGNORECASE)
@@ -53,6 +66,71 @@ BOILERPLATE_PATTERNS = [
 ]
 
 TITLE_MATCH_THRESHOLD = 0.4
+
+# --- RESOURCE AND SETTINGS HELPERS ---
+
+def resource_path(filename):
+    """Get path to a bundled resource, works for dev and PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, filename)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+
+_journal_abbrevs = None
+
+def load_journal_abbreviations():
+    """Loads the JabRef journal abbreviation CSV into a lookup dict."""
+    global _journal_abbrevs
+    if _journal_abbrevs is not None:
+        return _journal_abbrevs
+    _journal_abbrevs = {}
+    csv_path = resource_path("journal_abbreviations.csv")
+    if not os.path.exists(csv_path):
+        print(f"Journal abbreviations file not found: {csv_path}")
+        return _journal_abbrevs
+    try:
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if len(row) >= 2 and row[0] and row[1]:
+                    _journal_abbrevs[row[0].lower()] = row[1]
+    except Exception as e:
+        print(f"Error loading journal abbreviations: {e}")
+    return _journal_abbrevs
+
+def get_journal_abbrev(metadata):
+    """Resolves the best journal abbreviation from metadata."""
+    full_name = metadata.get('journal', '')
+    abbrev = metadata.get('journal_abbrev', '')
+
+    # If CrossRef gave us a genuine abbreviation (different from full name), use it
+    if abbrev and abbrev.lower() != full_name.lower():
+        return abbrev
+
+    # Try JabRef lookup
+    if full_name:
+        abbrevs = load_journal_abbreviations()
+        looked_up = abbrevs.get(full_name.lower(), '')
+        if looked_up:
+            return looked_up
+
+    # Fall back to whatever we have
+    return abbrev or full_name
+
+def load_settings():
+    """Loads user settings from disk."""
+    try:
+        with open(SETTINGS_PATH, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def save_settings(settings):
+    """Saves user settings to disk."""
+    try:
+        with open(SETTINGS_PATH, 'w') as f:
+            json.dump(settings, f, indent=2)
+    except Exception as e:
+        print(f"Could not save settings: {e}")
 
 # --- TIER 1: DOI EXTRACTION ---
 
@@ -198,7 +276,15 @@ def _parse_crossref_item(item):
                 first_author = author['family']
                 break
 
-    return {'year': year, 'author': first_author, 'title': title}
+    journal = item.get('container-title', [''])[0] if item.get('container-title') else ''
+    journal_abbrev = item.get('short-container-title', [''])[0] if item.get('short-container-title') else ''
+    journal = journal.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    journal_abbrev = journal_abbrev.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+
+    return {
+        'year': year, 'author': first_author, 'title': title,
+        'journal': journal, 'journal_abbrev': journal_abbrev,
+    }
 
 def validate_match(pdf_text, crossref_result):
     """Validates a CrossRef match against the PDF text. Returns a confidence string."""
@@ -289,15 +375,29 @@ def sanitize_filename(name):
     sanitized = re.sub(r'[\\/*?:"<>|]', "", base_name)
     return sanitized[:150]
 
-def format_new_filename(metadata):
-    """Formats the new filename based on the extracted metadata."""
+def format_new_filename(metadata, template=None, tags_str=""):
+    """Formats the new filename based on the extracted metadata and template."""
     if not metadata:
         return "COULD-NOT-PROCESS.pdf"
-    year = metadata.get('year', 'UnknownYear')
-    author = sanitize_filename(metadata.get('author', 'UnknownAuthor'))
-    title = sanitize_filename(metadata.get('title', 'Untitled'))
-    title = title.replace(' ', '-')
-    return f"{year}-{author}-{title}.pdf"
+    if template is None:
+        template = DEFAULT_TEMPLATES[0]
+
+    journal = get_journal_abbrev(metadata)
+    values = {
+        '{Year}': metadata.get('year', 'UnknownYear'),
+        '{Author}': sanitize_filename(metadata.get('author', 'UnknownAuthor')),
+        '{Title}': sanitize_filename(metadata.get('title', 'Untitled')),
+        '{Journal}': sanitize_filename(journal) if journal else 'UnknownJournal',
+        '{Tags}': sanitize_filename(tags_str) if tags_str else '',
+    }
+    filename = template
+    for placeholder, value in values.items():
+        filename = filename.replace(placeholder, value)
+    # Clean up double/trailing separators from empty fields
+    filename = filename.replace(' ', '-')
+    filename = re.sub(r'-{2,}', '-', filename)
+    filename = filename.strip('-')
+    return sanitize_filename(filename) + ".pdf"
 
 # --- GUI APPLICATION CLASS ---
 
@@ -305,9 +405,11 @@ class PDFRenamerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Scientific PDF Renamer")
-        self.root.geometry("900x600")
-        
+        self.root.geometry("1000x650")
+
         self.file_list = []
+        self.settings = load_settings()
+        self.current_template = self.settings.get('template', DEFAULT_TEMPLATES[0])
 
         # Add the menu bar
         self.create_menu()
@@ -316,23 +418,50 @@ class PDFRenamerApp:
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Row 1: Buttons
         top_frame = ttk.Frame(main_frame)
-        top_frame.pack(fill=tk.X, pady=(0, 10))
+        top_frame.pack(fill=tk.X, pady=(0, 5))
 
         self.select_button = ttk.Button(top_frame, text="1. Select PDF Files", command=self.select_files)
         self.select_button.pack(side=tk.LEFT, padx=(0, 10))
 
         self.rename_button = ttk.Button(top_frame, text="2. Apply Renaming", command=self.rename_files, state=tk.DISABLED)
         self.rename_button.pack(side=tk.LEFT)
-        
+
+        # Row 2: Template and Tags
+        options_frame = ttk.Frame(main_frame)
+        options_frame.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(options_frame, text="Pattern:").pack(side=tk.LEFT, padx=(0, 5))
+
+        template_values = list(DEFAULT_TEMPLATES) + ["Custom..."]
+        self.template_var = tk.StringVar(value=self.current_template)
+        self.template_combo = ttk.Combobox(options_frame, textvariable=self.template_var,
+                                           values=template_values, width=40, state="readonly")
+        if self.current_template in DEFAULT_TEMPLATES:
+            self.template_combo.current(DEFAULT_TEMPLATES.index(self.current_template))
+        else:
+            template_values.insert(-1, self.current_template)
+            self.template_combo['values'] = template_values
+            self.template_combo.current(template_values.index(self.current_template))
+        self.template_combo.bind('<<ComboboxSelected>>', self.on_template_changed)
+        self.template_combo.pack(side=tk.LEFT, padx=(0, 15))
+
+        ttk.Label(options_frame, text="Tags:").pack(side=tk.LEFT, padx=(0, 5))
+        self.tags_var = tk.StringVar(value=self.settings.get('tags', ''))
+        self.tags_entry = ttk.Entry(options_frame, textvariable=self.tags_var, width=25)
+        self.tags_entry.pack(side=tk.LEFT)
+        self.tags_entry.bind('<FocusOut>', lambda e: self.update_preview())
+        self.tags_entry.bind('<Return>', lambda e: self.update_preview())
+
         self.tree = ttk.Treeview(main_frame, columns=("Original", "New", "Status"), show="headings")
         self.tree.heading("Original", text="Original Filename")
         self.tree.heading("New", text="Proposed New Filename")
         self.tree.heading("Status", text="Status")
-        
+
         self.tree.column("Original", width=300)
-        self.tree.column("New", width=400)
-        self.tree.column("Status", width=150, anchor=tk.CENTER)
+        self.tree.column("New", width=450)
+        self.tree.column("Status", width=200, anchor=tk.CENTER)
 
         self.tree.pack(fill=tk.BOTH, expand=True)
         self.tree.bind('<Double-1>', self.on_double_click)
@@ -358,11 +487,69 @@ class PDFRenamerApp:
         """Displays the 'About' information box."""
         messagebox.showinfo(
             "About Scientific PDF Renamer",
-            "Scientific PDF Renamer v1.0\n\n"
+            "Scientific PDF Renamer v2.0\n\n"
             "Copyright (c) 2025 Erik Bitzek\n\n"
             "This program helps rename scientific papers using metadata from CrossRef. "
             "It is licensed under the GNU General Public License v3.0."
         )
+
+    def _get_tags_str(self):
+        """Parses the tags entry into a hyphen-joined string."""
+        raw = self.tags_var.get().strip()
+        if not raw:
+            return ""
+        tags = [t.strip() for t in raw.split(',') if t.strip()]
+        return "-".join(tags)
+
+    def on_template_changed(self, event=None):
+        """Handles template combobox selection."""
+        selected = self.template_var.get()
+        if selected == "Custom...":
+            custom = simpledialog.askstring(
+                "Custom Pattern",
+                "Enter a filename pattern using placeholders:\n"
+                "{Year}, {Author}, {Title}, {Journal}, {Tags}\n\n"
+                "Example: {Year}-{Author}-{Journal}-{Title}",
+                initialvalue=self.current_template,
+                parent=self.root
+            )
+            if custom and custom.strip():
+                self.current_template = custom.strip()
+                # Add custom template to combobox if not already there
+                values = list(self.template_combo['values'])
+                if self.current_template not in values:
+                    values.insert(-1, self.current_template)
+                    self.template_combo['values'] = values
+                self.template_var.set(self.current_template)
+            else:
+                self.template_var.set(self.current_template)
+        else:
+            self.current_template = selected
+
+        self._save_current_settings()
+        self.update_preview()
+
+    def _save_current_settings(self):
+        """Persists the current template and tags to disk."""
+        self.settings['template'] = self.current_template
+        self.settings['tags'] = self.tags_var.get().strip()
+        save_settings(self.settings)
+
+    def update_preview(self):
+        """Re-formats all filenames in the treeview using the current template and tags."""
+        self._save_current_settings()
+        tags_str = self._get_tags_str()
+        for file_info in self.file_list:
+            metadata = file_info.get('metadata')
+            if not metadata:
+                continue
+            status = self.tree.item(file_info['id'], 'values')[2]
+            if 'Manual Entry' in status:
+                continue
+            new_filename = format_new_filename(metadata, self.current_template, tags_str)
+            file_info['new_path'] = os.path.join(file_info['original_dir'], new_filename)
+            original_name = self.tree.item(file_info['id'], 'values')[0]
+            self.tree.item(file_info['id'], values=(original_name, new_filename, status))
 
     def select_files(self):
         """Opens a dialog to select PDF files and starts processing them."""
@@ -383,6 +570,7 @@ class PDFRenamerApp:
 
     def process_files(self, filepaths):
         """Processes each file to find metadata and suggests a new name."""
+        tags_str = self._get_tags_str()
         for path in filepaths:
             original_dir = os.path.dirname(path)
             original_filename = os.path.basename(path)
@@ -396,16 +584,17 @@ class PDFRenamerApp:
                 'id': item_id,
                 'original_path': path,
                 'original_dir': original_dir,
-                'new_path': None
+                'new_path': None,
+                'metadata': metadata,
             }
 
             if metadata and confidence == 'high':
-                new_filename = format_new_filename(metadata)
+                new_filename = format_new_filename(metadata, self.current_template, tags_str)
                 file_info['new_path'] = os.path.join(original_dir, new_filename)
                 status = f"Ready [{method}]"
                 self.tree.item(item_id, values=(original_filename, new_filename, status))
             elif metadata and confidence == 'low':
-                new_filename = format_new_filename(metadata)
+                new_filename = format_new_filename(metadata, self.current_template, tags_str)
                 file_info['new_path'] = os.path.join(original_dir, new_filename)
                 status = f"Low Confidence [{method}]"
                 self.tree.item(item_id, values=(original_filename, new_filename, status))
