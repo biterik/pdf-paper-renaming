@@ -20,3 +20,4 @@ __pycache__/
 test_pdfs/
 debug_crossref.py
 test_pipeline.py
+.claude/
