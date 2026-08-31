@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "pdf-paper-renaming"
+type: software
+authors:
+  - family-names: Bitzek
+    given-names: Erik
+    email: e.bitzek@mpi-susmat.de
+    orcid: "https://orcid.org/0000-0001-7430-3694"
+    affiliation: >-
+      Department of Materials Science, WW8-Materials Simulation,
+      Friedrich-Alexander-Universität Erlangen-Nürnberg,
+      Dr.-Mack-Straße 77, 90762 Fürth, Germany
+abstract: >-
+  Batch renaming of scientific paper PDFs from their own bibliographic
+  metadata: a graphical tool that identifies each file via the Crossref
+  API, then renames it according to a customisable pattern built from
+  year, first author, title, journal and user-defined tags — with a
+  built-in database of about 30,000 journal abbreviations, a live
+  preview before anything is changed, and a manual fallback when the
+  lookup fails. Turns an ad-hoc pile of downloads into a consistently
+  named, searchable local literature collection.
+  Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research
+  Foundation) under the National Research Data Infrastructure –
+  NFDI 38/1 – project number 460247524 (NFDI-MatWerk consortium).
+license: GPL-3.0-or-later
+repository-code: "https://github.com/biterik/pdf-paper-renaming"
+url: "https://github.com/biterik/pdf-paper-renaming"
+version: "2.0"
+date-released: "2025-07-31"
+keywords:
+  - pdf
+  - bibliographic-metadata
+  - crossref
+  - reference-management
+  - research-software-engineering
+  - software-sustainability
+  - nfdi-matwerk
