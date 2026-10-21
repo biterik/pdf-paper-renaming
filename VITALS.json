@@ -7,25 +7,25 @@
     "prs_merged_30d": 0,
     "prs_opened_30d": 0
   },
-  "collected_at": "2026-10-20T08:38:30Z",
-  "date": "2026-10-20",
+  "collected_at": "2026-10-21T08:39:45Z",
+  "date": "2026-10-21",
   "derived": {
-    "clones_last_30d": 235,
+    "clones_last_30d": 226,
     "clones_last_7d": 47,
     "downloads_gained_30d": 0,
     "downloads_total": 11,
     "funnel_30d": {
       "downloads_gained": 0,
       "stars_gained": 0,
-      "unique_cloners": 157,
+      "unique_cloners": 152,
       "unique_visitors": 5
     },
-    "history_days": 118,
+    "history_days": 119,
     "per_30d": {
-      "clones": 142.1,
+      "clones": 141.2,
       "downloads_gained": 0.3,
       "stars_gained": 0.0,
-      "unique_cloners": 99.7,
+      "unique_cloners": 99.1,
       "unique_visitors": 2.3,
       "views": 2.5
     },
@@ -40,28 +40,28 @@
     "stars_gained_7d": 0,
     "stars_now": 0,
     "totals": {
-      "clones": 559,
+      "clones": 560,
       "downloads_gained": 1,
       "stars_gained": 0,
-      "unique_cloners": 392,
+      "unique_cloners": 393,
       "unique_visitors": 9,
       "views": 10
     },
-    "tracking_days": 118,
+    "tracking_days": 119,
     "tracking_since": "2026-06-25",
     "views_last_30d": 5,
     "views_last_7d": 1,
     "views_prev_7d": 0,
     "windows": {
       "30d": {
-        "clones": 235,
+        "clones": 226,
         "downloads_gained": 0,
         "stars_gained": 0,
         "unique_visitors": 5,
         "views": 5
       },
       "365d": {
-        "clones": 559,
+        "clones": 560,
         "downloads_gained": 1,
         "stars_gained": 0,
         "unique_visitors": 9,
@@ -83,8 +83,8 @@
     "default_branch": "main",
     "fork": false,
     "open_issues": 0,
-    "pushed_at": "2026-10-19T09:00:16Z",
-    "size_kb": 43967
+    "pushed_at": "2026-10-20T08:38:34Z",
+    "size_kb": 43968
   },
   "popularity": {
     "forks": 0,
@@ -166,10 +166,6 @@
   "schema_version": 1,
   "traffic": {
     "clones": {
-      "2026-10-06": {
-        "count": 18,
-        "uniques": 10
-      },
       "2026-10-07": {
         "count": 2,
         "uniques": 2
@@ -221,6 +217,10 @@
       "2026-10-19": {
         "count": 4,
         "uniques": 4
+      },
+      "2026-10-20": {
+        "count": 1,
+        "uniques": 1
       }
     },
     "paths": [
@@ -228,19 +228,10 @@
         "count": 1,
         "path": "/biterik/pdf-paper-renaming",
         "uniques": 1
-      },
-      {
-        "count": 1,
-        "path": "/biterik/pdf-paper-renaming/pulls",
-        "uniques": 1
       }
     ],
     "referrers": [],
     "views": {
-      "2026-10-06": {
-        "count": 1,
-        "uniques": 1
-      },
       "2026-10-07": {
         "count": 0,
         "uniques": 0
@@ -290,6 +281,10 @@
         "uniques": 1
       },
       "2026-10-19": {
+        "count": 0,
+        "uniques": 0
+      },
+      "2026-10-20": {
         "count": 0,
         "uniques": 0
       }
