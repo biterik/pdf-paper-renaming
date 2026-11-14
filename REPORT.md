@@ -1,12 +1,12 @@
 # biterik/pdf-paper-renaming — repo vitals
 
 ![stars](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbiterik%2Fpdf-paper-renaming%2Fvitals%2Fbadge%2Fstars.json) ![views/week](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbiterik%2Fpdf-paper-renaming%2Fvitals%2Fbadge%2Fviews-week.json) 
-_Updated 2026-11-13T11:08:19Z (UTC) · machine-readable: [VITALS.json](VITALS.json) · full history: [history.ndjson](history.ndjson) · daily snapshots: [snapshots/](snapshots/)_
+_Updated 2026-11-14T10:35:44Z (UTC) · machine-readable: [VITALS.json](VITALS.json) · full history: [history.ndjson](history.ndjson) · daily snapshots: [snapshots/](snapshots/)_
 
 | | |
 |---|---|
 | Repository created | 2025-07-31 |
-| Tracked by repo-vitals since | 2026-06-25 (142 days)³ |
+| Tracked by repo-vitals since | 2026-06-25 (143 days)³ |
 
 
 ## Summary
@@ -15,7 +15,7 @@ _Updated 2026-11-13T11:08:19Z (UTC) · machine-readable: [VITALS.json](VITALS.js
 |---|---:|---:|---:|
 | Views | 16 | 24 | 25 |
 | Unique visitors¹ | 16 | 23 | 24 |
-| Clones | 200 | 532 | 713 |
+| Clones | 193 | 541 | 723 |
 | Stars gained | 0 | 0 | 0 |
 | Release downloads gained | 0 | 0 | 1 |
 
@@ -23,14 +23,14 @@ _Updated 2026-11-13T11:08:19Z (UTC) · machine-readable: [VITALS.json](VITALS.js
 
 ## Since tracking began
 
-Everything recorded so far, from 2026-06-25 (142 days) — the total, and the same total expressed as an average rate.
+Everything recorded so far, from 2026-06-25 (143 days) — the total, and the same total expressed as an average rate.
 
 | Metric | Total | Average / 30 d |
 |---|---:|---:|
-| Views | 25 | 5.3 |
-| Unique visitors¹ | 24 | 5.1 |
-| Clones | 713 | 150.6 |
-| Unique cloners¹ | 489 | 103.3 |
+| Views | 25 | 5.2 |
+| Unique visitors¹ | 24 | 5.0 |
+| Clones | 723 | 151.7 |
+| Unique cloners¹ | 494 | 103.6 |
 | Stars gained | 0 | 0.0 |
 | Release downloads gained | 1 | 0.2 |
 
@@ -39,24 +39,24 @@ Averages are the total divided by days tracked, times 30 — not a projection.
 ## Trends — last 30 days
 
 ```
-views  ▁▁▁▂▁▁▁▁▁▁▁▁▁▁▄▂█▁▁▁▁▅▁▁▁▁▁▁▁·  (16 total)
-clones ▇▁▅▄▂▁▁▇▁▁▁▁▇▁▂▁▂▁█▅▂▆▆▁▁▆▂▁▅·  (200 total)
+views  ▁▁▂▁▁▁▁▁▁▁▁▁▁▄▂█▁▁▁▁▅▁▁▁▁▁▁▁▁·  (16 total)
+clones ▁▅▄▂▁▁▇▁▁▁▁▇▁▂▁▂▁█▅▂▆▆▁▁▆▂▁▅▄·  (193 total)
 ```
 
 ('·' = day without data)
 
 Stars: **0** (+0 in 30 d, +0 in 7 d)
-**Conversion funnel (30 d):** 16 unique visitors → 124 unique cloners → 0 stars gained → 0 downloads gained
+**Conversion funnel (30 d):** 16 unique visitors → 121 unique cloners → 0 stars gained → 0 downloads gained
 
 ## Where visitors come from (14-day window)
 
 | Referrer | Views | Unique |
 |---|---:|---:|
-| aocr.org | 5 | 5 |
+| aocr.org | 4 | 4 |
 
 | Popular path | Views | Unique |
 |---|---:|---:|
-| `/biterik/pdf-paper-renaming` | 8 | 8 |
+| `/biterik/pdf-paper-renaming` | 7 | 7 |
 | `/biterik/pdf-paper-renaming/activity` | 1 | 1 |
 | `/biterik/pdf-paper-renaming/releases` | 1 | 1 |
 | `/biterik/pdf-paper-renaming/tree/add-repo-vitals` | 1 | 1 |
@@ -95,7 +95,7 @@ Interactive dashboard: [index.html](index.html) on this branch (raw URLs don't
 render HTML — view it via GitHub Pages on the vitals branch, the repo-vitals
 hub, or locally: `git clone -b vitals … && python -m http.server`).
 A copy of this report named with the repo and today's date lives at
-[reports/biterik-pdf-paper-renaming-2026-11-13.md](reports/biterik-pdf-paper-renaming-2026-11-13.md)
+[reports/biterik-pdf-paper-renaming-2026-11-14.md](reports/biterik-pdf-paper-renaming-2026-11-14.md)
 — safe to download standalone.
 
 <sub>[repo-vitals](https://github.com/biterik/repo-vitals) by Erik Bitzek —
